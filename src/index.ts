@@ -20,15 +20,18 @@ setAppConfig(app);
 setMiddlewares(app, express);
 setRoutesConfig(app);
 
-const bootstrap = () => {
+const bootstrap = async () => {
+    await initMongoDB();
     appStart(server, app);
-    initMongoDB();
 };
 
 // ✅ This is the critical guard — without it, every Jest import triggers
 // real DB/Redis connections and tests fail with ConnectionTimeoutError
 if (process.env.NODE_ENV !== 'test') {
-    bootstrap();
+    bootstrap().catch(error => {
+        console.error('❌ Failed to bootstrap application:', error);
+        process.exit(1);
+    });
 }
 
 export default app;
