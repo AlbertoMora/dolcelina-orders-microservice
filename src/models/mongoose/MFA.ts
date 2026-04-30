@@ -1,7 +1,7 @@
 import mongoose, { Date, Document, Schema, Types } from 'mongoose';
 
 export interface IMfa extends Document {
-    _id: string;
+    _id: Types.ObjectId;
     code: string;
     dueDate: Date;
     sessionId: string;

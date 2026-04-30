@@ -6,23 +6,28 @@ import {
     responseCodes,
     sendClientError,
     sendOkResponse,
-} from '@aure/commons';
+} from '@amora95/commons';
 import { serviceErrors } from '../constants/service-errors';
 import moment from 'moment';
 import { getUserSession } from '../utils/session-helper';
 import { ICompletePaymentViewModel } from '../viewmodels/orders.viewmodels';
 import { SequelizeService } from '../services/sequelize-service';
-import { orderStates, payment_methods, stripePaymentIntents } from '../constants/orders-constants';
-import { order } from '../models/mariadb/order';
+import {
+    orderStates,
+    payment_methods,
+    stripePaymentIntents,
+    unknownState,
+} from '../constants/orders-constants';
 import { stripeSecretKey } from '../constants/secrets-contants';
 import stripe from 'stripe';
+import { order } from '../models/mariadb/order';
 
 export const addItemAction = async (req: Request, res: Response) => {
     const { item, cartId } = req.body;
 
     const token = req.headers.authorization;
 
-    const { cart, email } = await getCart(cartId, token);
+    const { cart, email } = await getCart(cartId ?? unknownState, token);
 
     if (!cart) {
         const newCart = new Cart({
@@ -63,7 +68,7 @@ export const deleteItemAction = async (req: Request, res: Response) => {
     const { item, cartId } = req.body;
     const token = req.headers.authorization;
 
-    const { cart } = await getCart(cartId, token);
+    const { cart } = await getCart(cartId ?? unknownState, token);
 
     if (!cart) {
         return sendClientError(serviceErrors.crt01, res, httpCodes.not_found);
@@ -87,10 +92,10 @@ export const deleteItemAction = async (req: Request, res: Response) => {
     return sendOkResponse(responseBody, res);
 };
 
-export const getCartAction = async (req: Request, res: Response) => {
-    const { cartId } = req.query;
+export const getCartAction = async (req: Request<{ cartId: string }>, res: Response) => {
+    const { cartId } = req.params;
     const token = req.headers.authorization;
-    const { cart } = await getCart(cartId as string, token);
+    const { cart } = await getCart(cartId, token);
     if (!cart) {
         return sendClientError(serviceErrors.crt01, res, httpCodes.not_found);
     }
@@ -99,14 +104,15 @@ export const getCartAction = async (req: Request, res: Response) => {
     return sendOkResponse(responseBody, res);
 };
 
-export const getCart = async (cartId: string, token?: string) => {
+export const getCart = async (cartId?: string, token?: string) => {
     const session = getUserSession(token ?? '');
+    if (cartId === unknownState && !session) return { cart: null, email: '', userId: '' };
     let email = '';
     if (session) email = session.user.id;
 
     const or = [];
     if (email) or.push({ email });
-    if (cartId) or.push({ _id: cartId });
+    if (cartId && cartId !== unknownState && !email) or.push({ _id: cartId });
 
     const cart = await Cart.findOne({ $or: or });
     return { cart, email, userId: session?.user.id };
@@ -118,7 +124,7 @@ export const createPaymentIntentAction = async (
 ) => {
     const { cart_id } = req.body;
     const token = req.headers.authorization;
-    const { cart, userId, email } = await getCart(cart_id ?? '', token);
+    const { cart, userId, email } = await getCart(cart_id ?? unknownState, token);
     if (!cart) return sendClientError(serviceErrors.crt01, res, httpCodes.not_found);
 
     const amount = cart.items.reduce((acc, item) => acc + (item.price ?? 0) * item.quantity, 0);
@@ -140,20 +146,29 @@ export const completePaymentAction = async (
     req: Request<{}, {}, ICompletePaymentViewModel, {}>,
     res: Response,
 ) => {
-    const { payment_id, sinpe_url, cart_id } = req.body;
+    const { payment_id, sinpe_url, cart_id, address } = req.body;
 
     const token = req.headers.authorization;
-    const { cart, email } = await getCart(cart_id ?? '', token);
+    const { cart, email } = await getCart(cart_id ?? unknownState, token);
 
     if (!cart) return sendClientError(serviceErrors.crt01, res, httpCodes.not_found);
 
     const sequelize = await SequelizeService.getInstance();
+
+    const add = await getOrCreateAddress(address, sequelize);
+    if (!add) {
+        return sendClientError(serviceErrors.ord02, res, httpCodes.server_error);
+    }
 
     const newOrder = await sequelize.db.order.create({
         id: crypto.randomUUID(),
         email: email ?? '',
         total: cart.items.reduce((acc, item) => acc + (item.price ?? 0) * item.quantity, 0),
         status: orderStates.pending,
+        shipping_address_id: add.id,
+        payment_method: payment_id ? payment_methods.credit_card : payment_methods.sinpe,
+        created_at: moment().utc().toDate(),
+        last_modified: moment().utc().toDate(),
     });
 
     const newOrderItems = await createOrderItems(cart.items, newOrder.id, sequelize);
@@ -166,7 +181,10 @@ export const completePaymentAction = async (
 
     await cart.deleteOne();
 
-    return sendOkResponse({ status: responseCodes.ok, newOrder, newOrderItems }, res);
+    return sendOkResponse(
+        { status: responseCodes.ok, order: newOrder, orderItems: newOrderItems },
+        res,
+    );
 };
 
 const createOrderItems = async (
@@ -176,6 +194,8 @@ const createOrderItems = async (
 ) => {
     const orderItemsPayload = items.map(item => ({
         id: crypto.randomUUID(),
+        name: item.title,
+        image_uri: item.primary_image_id,
         order_id: orderId,
         product_id: item.id,
         quantity: item.quantity,
@@ -184,6 +204,30 @@ const createOrderItems = async (
     const newOrderItems = await sequelize.db.order_item.bulkCreate(orderItemsPayload);
 
     return newOrderItems;
+};
+
+const getOrCreateAddress = async (
+    address: ICompletePaymentViewModel['address'],
+    sequelize: SequelizeService,
+) => {
+    if (address?.id)
+        return await sequelize.db.address.findOne({
+            where: {
+                id: address.id,
+            },
+        });
+
+    const newAddress = await sequelize.db.address.create({
+        id: crypto.randomUUID(),
+        email: address.email,
+        address_line: address.one_line_address,
+        city: address.city,
+        state: address.state,
+        postal_code: address.postal_code,
+        additional_info: address.additional_info,
+    });
+
+    return newAddress;
 };
 
 const processPayment = async (order: order, sinpe_url?: string, payment_id?: string) => {
@@ -196,6 +240,7 @@ const processPayment = async (order: order, sinpe_url?: string, payment_id?: str
         order.status = orderStates.processing;
     } else if (sinpe_url) {
         order.payment_method = payment_methods.sinpe;
+        order.sinpe_voucher_url = sinpe_url;
         order.status = orderStates.on_hold;
     } else {
         return false;

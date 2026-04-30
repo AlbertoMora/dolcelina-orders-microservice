@@ -30,7 +30,7 @@ jest.mock('../../../../dist/services/sequelize-service', () => ({
     SequelizeService: { getInstance: jest.fn() },
 }));
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     httpCodes: { bad_request: 400, not_found: 404, ok: 200, server_error: 500 },
     responseCodes: { ok: 'OK' },
     sendClientError: jest.fn(),
@@ -92,7 +92,7 @@ const {
     httpCodes,
     responseCodes,
     OpenbaoVaultClient,
-} = require('@aure/commons');
+} = require('@amora95/commons');
 const { getUserSession } = require('../../../../dist/utils/session-helper');
 const CartModel = require('../../../../dist/models/mongoose/Cart').default;
 const { SequelizeService } = require('../../../../dist/services/sequelize-service');

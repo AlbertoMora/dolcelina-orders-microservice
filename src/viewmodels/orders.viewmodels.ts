@@ -35,4 +35,15 @@ export interface ICompletePaymentViewModel {
     payment_id?: string;
     sinpe_url?: string;
     cart_id?: string;
+    address: IAddressViewModel;
+}
+
+export interface IAddressViewModel {
+    id?: string;
+    email: string;
+    one_line_address: string;
+    city: string;
+    state: string;
+    postal_code: string;
+    additional_info?: string;
 }

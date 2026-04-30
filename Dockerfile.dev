@@ -1,0 +1,12 @@
+FROM node:20.13.1-slim
+
+WORKDIR /app
+
+COPY package.json yarn.lock ./
+
+COPY . .
+
+EXPOSE 3204
+EXPOSE 8231
+
+CMD ["yarn", "start"]

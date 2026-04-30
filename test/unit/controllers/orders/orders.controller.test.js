@@ -5,7 +5,7 @@ jest.mock('../../../../dist/services/sequelize-service', () => ({
     SequelizeService: { getInstance: jest.fn() },
 }));
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     httpCodes: { bad_request: 400, not_found: 404, ok: 200, conflict: 409, server_error: 500 },
     responseCodes: { ok: 'OK' },
     sendClientError: jest.fn(),
@@ -34,7 +34,7 @@ const {
     httpCodes,
     responseCodes,
     avoidNanParseInt,
-} = require('@aure/commons');
+} = require('@amora95/commons');
 const { SequelizeService } = require('../../../../dist/services/sequelize-service');
 const { serviceErrors } = require('../../../../dist/constants/service-errors');
 

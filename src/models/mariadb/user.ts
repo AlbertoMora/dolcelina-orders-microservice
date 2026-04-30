@@ -2,6 +2,7 @@ import * as Sequelize from 'sequelize';
 import { DataTypes, Model, Optional } from 'sequelize';
 import type { ban_case, ban_caseId } from './ban_case';
 import type { banner, bannerId } from './banner';
+import type { order, orderId } from './order';
 import type { product, productId } from './product';
 import type { review, reviewId } from './review';
 
@@ -19,11 +20,13 @@ export interface userAttributes {
   ban_case_id?: string;
   last_modified?: Date;
   created_at: Date;
+  is_admin: number;
+  is_superadmin: number;
 }
 
 export type userPk = "id";
 export type userId = user[userPk];
-export type userOptionalAttributes = "name" | "lastname" | "country_code" | "telephone" | "prof_pic" | "is_active" | "ban_case_id" | "last_modified" | "created_at";
+export type userOptionalAttributes = "name" | "lastname" | "country_code" | "telephone" | "prof_pic" | "is_active" | "ban_case_id" | "last_modified" | "created_at" | "is_admin" | "is_superadmin";
 export type userCreationAttributes = Optional<userAttributes, userOptionalAttributes>;
 
 export class user extends Model<userAttributes, userCreationAttributes> implements userAttributes {
@@ -40,6 +43,8 @@ export class user extends Model<userAttributes, userCreationAttributes> implemen
   ban_case_id?: string;
   last_modified?: Date;
   created_at!: Date;
+  is_admin!: number;
+  is_superadmin!: number;
 
   // user hasMany ban_case via banned_player_id
   ban_cases!: ban_case[];
@@ -77,6 +82,18 @@ export class user extends Model<userAttributes, userCreationAttributes> implemen
   hasBanner!: Sequelize.HasManyHasAssociationMixin<banner, bannerId>;
   hasBanners!: Sequelize.HasManyHasAssociationsMixin<banner, bannerId>;
   countBanners!: Sequelize.HasManyCountAssociationsMixin;
+  // user hasMany order via user_id
+  orders!: order[];
+  getOrders!: Sequelize.HasManyGetAssociationsMixin<order>;
+  setOrders!: Sequelize.HasManySetAssociationsMixin<order, orderId>;
+  addOrder!: Sequelize.HasManyAddAssociationMixin<order, orderId>;
+  addOrders!: Sequelize.HasManyAddAssociationsMixin<order, orderId>;
+  createOrder!: Sequelize.HasManyCreateAssociationMixin<order>;
+  removeOrder!: Sequelize.HasManyRemoveAssociationMixin<order, orderId>;
+  removeOrders!: Sequelize.HasManyRemoveAssociationsMixin<order, orderId>;
+  hasOrder!: Sequelize.HasManyHasAssociationMixin<order, orderId>;
+  hasOrders!: Sequelize.HasManyHasAssociationsMixin<order, orderId>;
+  countOrders!: Sequelize.HasManyCountAssociationsMixin;
   // user hasMany product via created_by
   products!: product[];
   getProducts!: Sequelize.HasManyGetAssociationsMixin<product>;
@@ -159,6 +176,16 @@ export class user extends Model<userAttributes, userCreationAttributes> implemen
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: Sequelize.Sequelize.fn('current_timestamp')
+    },
+    is_admin: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: 0
+    },
+    is_superadmin: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: 0
     }
   }, {
     sequelize,

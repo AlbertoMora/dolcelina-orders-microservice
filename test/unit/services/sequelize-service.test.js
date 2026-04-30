@@ -7,7 +7,7 @@ jest.mock('sequelize', () => {
     return { Sequelize: mockSequelize };
 });
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     OpenbaoVaultClient: {
         getInstance: jest.fn(() => ({
             getSecret: jest.fn().mockResolvedValue({

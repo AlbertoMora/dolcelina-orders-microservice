@@ -18,16 +18,19 @@ export const initMongoDB = async () => {
     }
 };
 
-export const redisClient = createClient();
+const redisUrl =
+    process.env.REDIS_URL ??
+    `redis://${process.env.REDIS_HOST ?? 'redis'}:${process.env.REDIS_PORT ?? '6379'}`;
+
+export const redisClient = createClient({
+    url: redisUrl,
+});
 
 redisClient
     .connect()
     .then(() => {
-        console.log('✅ Redis connection established successfully');
+        console.log('Redis connection established successfully');
     })
-    .catch(error => {
-        console.error(
-            '❌ Failed to connect to Redis:',
-            error instanceof Error ? error.message : String(error),
-        );
+    .catch(() => {
+        console.log('Cannot connect to Redis Server');
     });

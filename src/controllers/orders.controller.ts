@@ -6,12 +6,13 @@ import {
     responseCodes,
     sendClientError,
     sendOkResponse,
-} from '@aure/commons';
+} from '@amora95/commons';
 import { serviceErrors } from '../constants/service-errors';
 import { IGetOrdersQueryViewModel, IUpdateOrderViewModel } from '../viewmodels/orders.viewmodels';
 import moment from 'moment';
 import { Op } from 'sequelize';
 import { IQueryViewModel } from '../types/commons.types';
+import { orderStates } from '../constants/orders-constants';
 
 export const getOrdersAction = async (
     req: Request<{}, {}, {}, IGetOrdersQueryViewModel>,
@@ -27,7 +28,7 @@ export const getOrdersAction = async (
         offset: avoidNanParseInt(offset),
         order: [[orderField?.trim() || 'created_at', orderDirection || 'DESC']],
         where: { ...params },
-        include: [{ model: sequelize.db.order_item, as: 'order_items' }],
+        include: [{ model: sequelize.db.address, as: 'shipping_address' }],
     });
 
     if (!orders) return sendClientError(serviceErrors.ord01, res, httpCodes.not_found);
@@ -47,6 +48,31 @@ export const getOrderByIdAction = async (req: Request<{ id: string }>, res: Resp
     });
 
     if (!order) return sendClientError(serviceErrors.ord01, res, httpCodes.not_found);
+
+    return sendOkResponse({ status: responseCodes.ok, order }, res);
+};
+
+export const setOrderNextStateAction = async (
+    req: Request<{ id: string }, {}, { shipping_number?: string }>,
+    res: Response,
+) => {
+    const { id } = req.params;
+    const { shipping_number } = req.body;
+    const sequelize = await SequelizeService.getInstance();
+
+    const order = await sequelize.db.order.findByPk(id);
+    if (!order) return sendClientError(serviceErrors.ord01, res, httpCodes.not_found);
+
+    order.status = getNextOrderState(order.status);
+
+    if (order.status === orderStates.shipping && shipping_number) {
+        order.shipping_number = shipping_number;
+    } else if (order.status === orderStates.shipping && !shipping_number) {
+        return sendClientError(serviceErrors.ord03, res, httpCodes.bad_request);
+    }
+
+    order.last_modified = moment().utc().toDate();
+    await order.save();
 
     return sendOkResponse({ status: responseCodes.ok, order }, res);
 };
@@ -103,4 +129,8 @@ const getSearchableFields = (query: Omit<IGetOrdersQueryViewModel, keyof IQueryV
         searchableFields.created_at = { [Op.between]: [new Date(min_date), new Date(max_date)] };
 
     return searchableFields;
+};
+
+const getNextOrderState = (currentState: number) => {
+    return currentState >= orderStates.completed ? currentState : currentState + 1;
 };

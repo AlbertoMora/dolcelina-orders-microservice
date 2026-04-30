@@ -1,7 +1,7 @@
 import mongoose, { Document, Types } from 'mongoose';
 
 export interface IUserSettings extends Document {
-    _id: string;
+    _id: Types.ObjectId;
     userId: string;
     language: string;
     theme: string;

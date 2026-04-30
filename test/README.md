@@ -70,10 +70,10 @@ jest.mock('../../../../dist/services/sequelize-service', () => ({
 
 ### 4. Common Mocks
 
-**@aure/commons:**
+**@amora95/commons:**
 
 ```js
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     httpCodes: { ok: 200, bad_request: 400, not_found: 404, server_error: 500 },
     responseCodes: { ok: 'OK' },
     sendClientError: jest.fn(),

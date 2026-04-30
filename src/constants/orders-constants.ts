@@ -1,7 +1,7 @@
 export const orderStates = {
     pending: 1,
-    processing: 2,
-    on_hold: 3,
+    on_hold: 2,
+    processing: 3,
     shipping: 4,
     completed: 5,
     cancelled: 6,
@@ -31,3 +31,5 @@ export const stripePaymentIntents = {
     requires_action: 'requires_action',
     canceled: 'canceled',
 };
+
+export const unknownState = 'Unknown';

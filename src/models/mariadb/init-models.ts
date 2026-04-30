@@ -92,6 +92,8 @@ export function initModels(sequelize: Sequelize) {
   user.hasMany(ban_case, { as: "reported_by_player_ban_cases", foreignKey: "reported_by_player_id"});
   banner.belongsTo(user, { as: "created_by_user", foreignKey: "created_by"});
   user.hasMany(banner, { as: "banners", foreignKey: "created_by"});
+  order.belongsTo(user, { as: "user", foreignKey: "user_id"});
+  user.hasMany(order, { as: "orders", foreignKey: "user_id"});
   product.belongsTo(user, { as: "created_by_user", foreignKey: "created_by"});
   user.hasMany(product, { as: "products", foreignKey: "created_by"});
   review.belongsTo(user, { as: "user", foreignKey: "user_id"});
