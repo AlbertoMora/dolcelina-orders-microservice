@@ -118,11 +118,29 @@ export const deleteOrderAction = async (req: Request<{ id: string }>, res: Respo
     return sendOkResponse({ status: responseCodes.ok }, res);
 };
 
+export const rejectOrderAction = async (req: Request<{ id: string }>, res: Response) => {
+    const { id } = req.params;
+    const sequelize = await SequelizeService.getInstance();
+
+    const order = await sequelize.db.order.findByPk(id);
+    if (!order) return sendClientError(serviceErrors.ord01, res, httpCodes.not_found);
+
+    if (order.status > orderStates.on_hold) {
+        return sendClientError(serviceErrors.ord04, res, httpCodes.bad_request);
+    }
+
+    order.status = orderStates.rejected;
+    order.last_modified = moment().utc().toDate();
+    await order.save();
+
+    return sendOkResponse({ status: responseCodes.ok, order }, res);
+};
+
 const getSearchableFields = (query: Omit<IGetOrdersQueryViewModel, keyof IQueryViewModel>) => {
-    const { email, status, payment_method, min_date, max_date } = query;
+    const { status, payment_method, min_date, max_date, user_id } = query;
     const searchableFields: Record<string, unknown> = {};
 
-    if (email) searchableFields.email = { [Op.like]: `%${email}%` };
+    if (user_id) searchableFields.email = user_id;
     if (status) searchableFields.status = status;
     if (payment_method) searchableFields.payment_method = payment_method;
     if (min_date && max_date)

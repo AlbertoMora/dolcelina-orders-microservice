@@ -6,6 +6,7 @@ export interface IGetOrdersQueryViewModel extends IQueryViewModel {
     payment_method?: string;
     min_date?: string;
     max_date?: string;
+    user_id?: string;
 }
 
 export interface ICreateOrderItemViewModel {
